@@ -4,7 +4,7 @@
    No-keyword spoiler detection
    =========================== */
 
-let movies = [];  // Store full movie list with titles
+let movies = [];
 let scheduled = false;
 
 /* Elements we must never touch */
@@ -68,18 +68,9 @@ function scan(root) {
       acceptNode(node) {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-
-        // Skip dangerous tags, but ALLOW <mark> and Google highlight spans
         if (SKIP_TAGS.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
-
-        if (parent.classList.contains("scube-blur")) {
-          return NodeFilter.FILTER_REJECT;
-        }
-
-        if (node.nodeValue.trim().length < 10) {
-          return NodeFilter.FILTER_REJECT;
-        }
-
+        if (parent.closest(".scube-blur")) return NodeFilter.FILTER_REJECT;
+        if (node.nodeValue.trim().length < 30) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       }
     }
@@ -98,79 +89,115 @@ function processNodeWithContext(textNode) {
   const parent = textNode.parentElement;
   if (!parent) return;
 
-  // Merge visible sibling text (handles Google highlights)
-  let combinedText = "";
+  const sentenceObj = collectSentence(parent);
+  if (!sentenceObj) return;
+
+  if (!isNearSelectedTitle(parent)) return;
+  if (!isNarrativeSentence(sentenceObj.text)) return;
+
+  if (parent.querySelector(".scube-blur")) return;
+
+  applyBlur(parent, sentenceObj);
+}
+
+/* ---------------------------
+   Sentence collector
+---------------------------- */
+function collectSentence(parent) {
+  let text = "";
   let nodes = [];
 
   parent.childNodes.forEach(n => {
-    if (n.nodeType === Node.TEXT_NODE && n.nodeValue.trim().length) {
-      combinedText += n.nodeValue;
+    if (n.nodeType === Node.TEXT_NODE && n.nodeValue.trim()) {
+      text += n.nodeValue;
       nodes.push(n);
     }
     if (n.nodeType === Node.ELEMENT_NODE && n.tagName === "MARK") {
-      combinedText += n.textContent;
+      text += n.textContent;
       nodes.push(n);
     }
   });
 
-  if (!combinedText) return;
+  if (text.length < 40) return null;
+  if (!/[.!?]/.test(text)) return null;
 
-  if (!isSpoilerSentence(combinedText)) return;
+  return { text, nodes };
+}
 
-  // Replace only once per parent
-  if (parent.querySelector(".scube-blur")) return;
+/* ---------------------------
+   Proximity-based title match
+---------------------------- */
+function isNearSelectedTitle(startEl) {
+  const titles = movies.map(m => m.title.toLowerCase());
+
+  let el = startEl;
+  let collected = "";
+  let steps = 0;
+
+  while (el && steps < 12) {
+    if (el.previousElementSibling) {
+      el = el.previousElementSibling;
+    } else {
+      el = el.parentElement;
+    }
+
+    if (!el) break;
+
+    if (el.innerText) {
+      collected += " " + el.innerText.toLowerCase();
+      if (titles.some(t => collected.includes(t))) {
+        return true;
+      }
+    }
+    steps++;
+  }
+  return false;
+}
+
+/* ---------------------------
+   Narrative detection (series-safe)
+---------------------------- */
+function isNarrativeSentence(text) {
+  const hasLength = text.length >= 40;
+  const hasStructure = /[.!?]/.test(text);
+  const hasAction =
+    /\b(was|were|had|did|became|lost|killed|married|betrayed)\b/i.test(text) ||
+    /\b\w+ed\b/.test(text);
+
+  // Action is a signal, not a requirement
+  return hasLength && hasStructure;
+}
+
+/* ---------------------------
+   Apply blur
+---------------------------- */
+function applyBlur(parent, sentenceObj) {
+  const { text, nodes } = sentenceObj;
 
   const span = document.createElement("span");
   span.className = "scube-blur";
-  span.textContent = combinedText;
+  span.textContent = text;
 
-  let isHovering = false;
-  let isMouseDown = false;
+  let hover = false;
+  let click = false;
 
-  span.addEventListener("mouseenter", () => {
-    isHovering = true;
-  });
-
+  span.addEventListener("mouseenter", () => hover = true);
   span.addEventListener("mouseleave", () => {
-    isHovering = false;
-    isMouseDown = false;
+    hover = false;
+    click = false;
     span.classList.remove("reveal");
   });
 
   span.addEventListener("mousedown", () => {
-    isMouseDown = true;
-    if (isHovering && isMouseDown) {
-      span.classList.add("reveal");
-    }
+    click = true;
+    if (hover) span.classList.add("reveal");
   });
 
   span.addEventListener("mouseup", () => {
-    isMouseDown = false;
-    if (!isHovering) {
-      span.classList.remove("reveal");
-    }
+    click = false;
+    if (!hover) span.classList.remove("reveal");
   });
 
-  // Remove original nodes
   nodes.forEach(n => parent.removeChild(n));
   parent.appendChild(span);
-}
-
-/* ---------------------------
-   NO-KEYWORD spoiler logic
----------------------------- */
-function isSpoilerSentence(text) {
-  const lower = text.toLowerCase();
-
-  // 1️⃣ MUST explicitly mention the movie title (exact match, case-insensitive)
-  const mentionedMovies = movies.filter(m => lower.includes(m.title.toLowerCase()));
-  if (mentionedMovies.length === 0) return false;
-
-  // 2️⃣ Multiple indicators needed to reduce false positives:
-  const hasPastTense = /\b(was|were|had|did)\b/i.test(text) || /\b\w+ed\b/.test(text);
-  const hasSpoilerLanguage = /\b(ending|twist|reveal|death|secret|betrayal|spoiler|discovered)\b/i.test(text);
-  const isLongEnough = text.length >= 50 && /[.!?]/.test(text);
-
-  // 3️⃣ Must have: (past tense OR spoiler language) AND be long/proper sentence
-  return (hasPastTense || hasSpoilerLanguage) && isLongEnough;
 }
