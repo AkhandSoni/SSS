@@ -1,22 +1,59 @@
+/* =========================================
+   SCUBE: THE LIVING HEDGE (FIXED REVEAL)
+   ========================================= */
+
 .scube-blur {
-  filter: blur(6px);
-  background: rgba(0,0,0,0.25);
-  cursor: pointer;
-  transition: filter 0.2s ease;
+  /* 1. HIDE THE SPOILER TEXT */
+  color: transparent !important;
+  text-shadow: none !important;
+
+  /* 2. FORCE WRAPPING & OVERLAP */
+  display: inline !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  /* Slight negative margin helps "stitch" the bushes together */
+  margin: 0 -2px !important; 
+  
+  /* 3. THE SHRUB IMAGE */
+  background-image: url('chrome-extension://__MSG_@@extension_id__/Long_Bush.png') !important;
+  
+  /* 4. SCALING & REPEAT */
+  background-size: auto 110% !important; /* Slightly larger to look denser */
+  background-repeat: repeat-x !important;
+  background-position: left center !important;
+  background-color: transparent !important;
+
+  /* 5. INTERACTION PREP */
+  padding: 10px 0 !important;
+  cursor: pointer !important; /* Changes to hand icon so you know it's clickable */
+  user-select: none;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease;
 }
 
+/* Interaction: Subtle Rustle */
+.scube-blur:hover:not(.reveal) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   6. THE REVEAL FIX (CRITICAL)
+   ========================================= */
+/* We reset EVERY property to ensure the text returns to normal */
 .scube-blur.reveal {
-  filter: none;
-  background: transparent;
-}
-.scube-wrapper {
-  filter: blur(6px);
-  background: rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  transition: filter 0.2s ease;
-}
-
-.scube-wrapper.reveal {
-  filter: none;
-  background: transparent;
+  color: inherit !important;
+  text-shadow: none !important;
+  background: none !important;
+  background-image: none !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  cursor: text !important;
+  display: inline !important;
+  /* Resetting clip-path if you decide to add it later */
+  clip-path: none !important; 
+  -webkit-clip-path: none !important;
 }
