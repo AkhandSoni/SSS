@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SCube",
-  "description": "Blurs spoiler sentences across the web using semantic matching. Hover to reveal.",
+  "description": "Blurs spoiler sentences across the web using AI semantic detection. Hover to reveal.",
   "version": "3.0.0",
   "icons": {
     "128": "icon128.png"
@@ -10,8 +10,14 @@
     "default_popup": "popup.html",
     "default_title": "SCube"
   },
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

@@ -1,439 +1,282 @@
-// content.js - SCube spoiler detection with detailed debugging
+// content.js - Semantic Spoiler Shield (AI-only version)
+// Uses zero-shot classification → no keywords, no plots, fully dynamic
 
-(function() {
+(function () {
   'use strict';
 
-  console.log('=== SCube Content Script Starting ===');
+  console.log('SCube AI: Semantic Spoiler Shield - Zero-shot version starting...');
 
-  // Configuration
-  const CONFIG = {
-    similarityThreshold: 0.60, // Lower threshold for testing
-    modelName: 'Xenova/all-MiniLM-L6-v2',
-    minSentenceLength: 40
-  };
+  // ────────────────────────────────────────────────
+  //  CONFIG
+  // ────────────────────────────────────────────────
+  const MODEL = 'Xenova/nli-deberta-v3-xsmall'; // ~120 MB, fast & good enough
+  // Alternatives: 'Xenova/deberta-v3-base-tasksource-nli' or 'Xenova/facebook/bart-large-mnli'
 
-  // State
-  let movieList = [];
-  let blurEnabled = true;
-  let pipeline = null;
-  let plotData = new Map(); // title -> { sentences, embeddings }
-  let blurredElements = [];
+  const MIN_SENTENCE_LENGTH = 50;
+  const BATCH_SIZE = 6; // how many sentences to classify at once
 
-  // === INITIALIZATION ===
-  async function init() {
-    console.log('SCube: 🚀 Initializing content script...');
-    
-    try {
-      // Load settings
-      const settings = await loadFromStorage();
-      movieList = settings.movieList || [];
-      blurEnabled = settings.blurEnabled !== false;
-      
-      console.log('SCube: 📋 Loaded settings:', {
-        movies: movieList,
-        count: movieList.length,
-        blurEnabled: blurEnabled
-      });
+  let classifier = null;
+  let trackedSeries = [];
+  let enabled = true;
+  let sensitivity = 0.5; // 0.0 = very strict, 1.0 = very lenient
+  let isProcessing = false;
 
-      // Only proceed if we have movies and blur is enabled
-      if (!blurEnabled) {
-        console.log('SCube: ⏸️ Blur is disabled');
-        return;
-      }
+  const blurredElements = new Set();
 
-      if (movieList.length === 0) {
-        console.log('SCube: 📭 No movies in list');
-        return;
-      }
-
-      // Initialize AI
-      console.log('SCube: 🤖 Loading AI model...');
-      await loadModel();
-      
-      if (!pipeline) {
-        console.error('SCube: ❌ Failed to load AI model');
-        return;
-      }
-
-      // Load plots
-      console.log('SCube: 📚 Loading plots...');
-      await loadPlots();
-
-      if (plotData.size === 0) {
-        console.log('SCube: ⚠️ No plots loaded successfully');
-        return;
-      }
-
-      // Process page
-      console.log('SCube: 🔍 Processing page...');
-      await scanAndBlur();
-      
-      console.log('SCube: ✅ Initialization complete!');
-
-    } catch (error) {
-      console.error('SCube: ❌ Initialization failed:', error);
-    }
-  }
-
-  // === STORAGE ===
-  function loadFromStorage() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['movieList', 'blurEnabled'], (result) => {
-        console.log('SCube: 💾 Storage loaded:', result);
-        resolve(result);
-      });
-    });
-  }
-
-  // === AI MODEL ===
-  async function loadModel() {
-    if (pipeline) {
-      console.log('SCube: ✅ Model already loaded');
-      return;
-    }
-
-    try {
-      // Check if transformers.js exists
-      if (typeof window.transformers === 'undefined') {
-        console.error('SCube: ❌ transformers.js NOT FOUND!');
-        console.error('SCube: ℹ️ Make sure transformers.min.js is in the extension folder');
-        return;
-      }
-
-      console.log('SCube: ✅ transformers.js found');
-      const { pipeline: pipelineFunc } = window.transformers;
-      
-      console.log('SCube: ⏳ Creating pipeline (this may take 20-60 seconds on first load)...');
-      pipeline = await pipelineFunc('feature-extraction', CONFIG.modelName);
-      
-      console.log('SCube: ✅ AI Model loaded successfully!');
-      
-    } catch (error) {
-      console.error('SCube: ❌ Model loading error:', error);
-      pipeline = null;
-    }
-  }
-
-  // === PLOT LOADING ===
-  async function loadPlots() {
-    console.log(`SCube: 📚 Loading plots for ${movieList.length} titles...`);
-    plotData.clear();
-
-    for (const title of movieList) {
-      console.log(`SCube: 🔍 Fetching "${title}" from Wikipedia...`);
-      
-      try {
-        const plot = await fetchWikipedia(title);
-        
-        if (!plot) {
-          console.warn(`SCube: ⚠️ No plot found for "${title}"`);
-          continue;
-        }
-
-        console.log(`SCube: ✅ Got plot for "${title}" (${plot.length} characters)`);
-
-        // Split into sentences
-        const sentences = splitSentences(plot);
-        console.log(`SCube: 📝 Split into ${sentences.length} sentences`);
-
-        if (sentences.length === 0) continue;
-
-        // Get embeddings
-        console.log(`SCube: 🧮 Computing embeddings for "${title}"...`);
-        const embeddings = await getEmbeddings(sentences);
-        
-        if (embeddings.length > 0) {
-          plotData.set(title, { sentences, embeddings });
-          console.log(`SCube: ✅ Stored ${embeddings.length} embeddings for "${title}"`);
-        }
-
-      } catch (error) {
-        console.error(`SCube: ❌ Error loading "${title}":`, error);
-      }
-    }
-
-    console.log(`SCube: ✅ Loaded ${plotData.size}/${movieList.length} plots successfully`);
-  }
-
-  // Fetch from Wikipedia
-  async function fetchWikipedia(title) {
-    try {
-      // Search
-      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(title)}&format=json&origin=*`;
-      const searchResp = await fetch(searchUrl);
-      const searchData = await searchResp.json();
-
-      if (!searchData.query?.search?.[0]) {
-        return null;
-      }
-
-      const pageTitle = searchData.query.search[0].title;
-      console.log(`SCube: 🔗 Found Wikipedia page: "${pageTitle}"`);
-
-      // Get content
-      const contentUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`;
-      const contentResp = await fetch(contentUrl);
-      const contentData = await contentResp.json();
-
-      const pages = contentData.query.pages;
-      const page = pages[Object.keys(pages)[0]];
-
-      return page.extract || null;
-
-    } catch (error) {
-      console.error('SCube: Wikipedia fetch error:', error);
-      return null;
-    }
-  }
-
-  // Split into sentences
-  function splitSentences(text) {
+  // ────────────────────────────────────────────────
+  //  UTILITIES
+  // ────────────────────────────────────────────────
+  function splitIntoSentences(text) {
     if (!text) return [];
-    
     return text
-      .replace(/([.!?])\s+/g, '$1\n')
+      .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n')
       .split('\n')
       .map(s => s.trim())
-      .filter(s => s.length >= CONFIG.minSentenceLength);
+      .filter(s => s.length >= MIN_SENTENCE_LENGTH);
   }
 
-  // Get embeddings
-  async function getEmbeddings(texts) {
-    if (!pipeline || !texts.length) return [];
+  function getSeriesNamesLower() {
+    return trackedSeries.map(s => s.name.toLowerCase());
+  }
 
+  function mentionsAnySeries(text) {
+    const lower = text.toLowerCase();
+    return getSeriesNamesLower().some(name => lower.includes(name));
+  }
+
+  function getSpoilerLabels() {
+    return trackedSeries.flatMap(s => [
+      `This text contains a major spoiler for ${s.name}`,
+      `This text contains a plot twist or key revelation about ${s.name}`,
+      `This text is a safe discussion of ${s.name} with no spoilers`
+    ]);
+  }
+
+  // ────────────────────────────────────────────────
+  //  INITIALIZATION
+  // ────────────────────────────────────────────────
+  async function loadModelAndSettings() {
     try {
-      console.log(`SCube: 🧮 Getting embeddings for ${texts.length} texts...`);
-      const output = await pipeline(texts, { pooling: 'mean', normalize: true });
-      
-      const embeddings = [];
-      for (let i = 0; i < texts.length; i++) {
-        embeddings.push(Array.from(output[i].data));
+      const data = await chrome.storage.sync.get([
+        'sss_enabled',
+        'sss_sensitivity',
+        'sss_tracked_series'
+      ]);
+
+      enabled = data.sss_enabled !== false;
+      sensitivity = data.sss_sensitivity ?? 0.5;
+      trackedSeries = data.sss_tracked_series ?? [];
+
+      if (!enabled || trackedSeries.length === 0) {
+        console.log('SCube AI: disabled or no series tracked → exiting');
+        return false;
       }
 
-      console.log(`SCube: ✅ Got ${embeddings.length} embeddings`);
-      return embeddings;
+      console.log(`SCube AI: Protecting ${trackedSeries.length} series | sensitivity = ${sensitivity}`);
 
-    } catch (error) {
-      console.error('SCube: Embedding error:', error);
+      console.log('SCube AI: Loading zero-shot classifier... (may take 15–60 s first time)');
+      const { pipeline } = window.transformers;
+      classifier = await pipeline('zero-shot-classification', MODEL);
+
+      console.log('SCube AI: Model loaded successfully');
+      return true;
+    } catch (err) {
+      console.error('SCube AI: Initialization failed', err);
+      return false;
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  //  CLASSIFICATION
+  // ────────────────────────────────────────────────
+  async function classifyBatch(sentences) {
+    if (!classifier || sentences.length === 0) return [];
+
+    const labels = getSpoilerLabels();
+    const hypothesisTemplate = 'This text {}.';
+
+    try {
+      const results = await classifier(sentences, labels, {
+        multi_label: false,
+        hypothesis_template: hypothesisTemplate
+      });
+
+      return results.map((res, i) => {
+        const topIdx = res.scores.indexOf(Math.max(...res.scores));
+        const topLabel = res.labels[topIdx];
+        const topScore = res.scores[topIdx];
+
+        const threshold = 0.52 + (1 - sensitivity) * 0.28; //  ~0.52–0.80 range
+
+        if (topScore >= threshold && topLabel.includes('spoiler')) {
+          const seriesMatch = trackedSeries.find(s =>
+            topLabel.includes(s.name)
+          );
+          return {
+            sentence: sentences[i],
+            series: seriesMatch?.name || 'Unknown series',
+            score: topScore
+          };
+        }
+        return null;
+      });
+    } catch (err) {
+      console.error('Classification batch failed:', err);
       return [];
     }
   }
 
-  // === SCANNING AND BLURRING ===
-  async function scanAndBlur() {
-    console.log('SCube: 🔍 Scanning page for spoilers...');
-
-    if (!pipeline || plotData.size === 0) {
-      console.log('SCube: ⚠️ Cannot scan - no model or plots');
-      return;
-    }
-
-    const textNodes = getTextNodes();
-    console.log(`SCube: 📄 Found ${textNodes.length} text nodes to check`);
-
-    let blurCount = 0;
-
-    for (const node of textNodes) {
-      const text = node.textContent;
-      const sentences = splitSentences(text);
-
-      for (const sentence of sentences) {
-        const spoiler = await checkSpoiler(sentence);
-        
-        if (spoiler) {
-          console.log(`SCube: 🚨 SPOILER FOUND (${spoiler.similarity.toFixed(3)}): "${sentence.substring(0, 60)}..."`);
-          blurSentence(node, sentence);
-          blurCount++;
-        }
-      }
-    }
-
-    console.log(`SCube: ✅ Scan complete - blurred ${blurCount} sentences`);
-  }
-
-  // Get all text nodes
-  function getTextNodes() {
-    const nodes = [];
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode: (node) => {
-          const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
-          
-          const tag = parent.tagName.toLowerCase();
-          if (['script', 'style', 'noscript'].includes(tag)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-
-          if (parent.classList.contains('scube-blur')) {
-            return NodeFilter.FILTER_REJECT;
-          }
-
-          const text = node.textContent.trim();
-          if (text.length < 30) return NodeFilter.FILTER_REJECT;
-
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-
-    let node;
-    while (node = walker.nextNode()) {
-      nodes.push(node);
-    }
-
-    return nodes;
-  }
-
-  // Check if sentence is spoiler
-  async function checkSpoiler(sentence) {
-    try {
-      const sentenceEmbed = (await getEmbeddings([sentence]))[0];
-      if (!sentenceEmbed) return null;
-
-      let maxSim = 0;
-      let matchTitle = null;
-
-      for (const [title, data] of plotData.entries()) {
-        for (const plotEmbed of data.embeddings) {
-          const sim = cosine(sentenceEmbed, plotEmbed);
-          if (sim > maxSim) {
-            maxSim = sim;
-            matchTitle = title;
-          }
-        }
-      }
-
-      if (maxSim >= CONFIG.similarityThreshold) {
-        return { title: matchTitle, similarity: maxSim };
-      }
-
-      return null;
-
-    } catch (error) {
-      console.error('SCube: Check error:', error);
-      return null;
-    }
-  }
-
-  // Cosine similarity
-  function cosine(a, b) {
-    if (!a || !b || a.length !== b.length) return 0;
-
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < a.length; i++) {
-      dot += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-
-    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-  }
-
-  // Blur a sentence in a text node
-  function blurSentence(textNode, sentence) {
-    try {
-      const parent = textNode.parentElement;
-      if (!parent) return;
-
-      const fullText = textNode.textContent;
-      const index = fullText.indexOf(sentence);
-      if (index === -1) return;
-
-      // Create blur span
-      const span = document.createElement('span');
-      span.className = 'scube-blur';
-      span.textContent = sentence;
-      span.title = '👁️ Hover to reveal spoiler';
-
-      // Split text
-      const before = fullText.substring(0, index);
-      const after = fullText.substring(index + sentence.length);
-
-      // Replace
-      const beforeNode = document.createTextNode(before);
-      const afterNode = document.createTextNode(after);
-
-      parent.insertBefore(beforeNode, textNode);
-      parent.insertBefore(span, textNode);
-      parent.insertBefore(afterNode, textNode);
-      parent.removeChild(textNode);
-
-      blurredElements.push(span);
-
-    } catch (error) {
-      console.error('SCube: Blur error:', error);
-    }
-  }
-
-  // Remove all blurs
-  function removeBlurs() {
-    console.log('SCube: 🧹 Removing all blurs...');
+  // ────────────────────────────────────────────────
+  //  DOM PROCESSING
+  // ────────────────────────────────────────────────
+  function createSpoilerSpan(sentence, info) {
+    const span = document.createElement('span');
+    span.className = 'spoiler-shield-overlay';
     
-    document.querySelectorAll('.scube-blur').forEach(el => {
-      const text = el.textContent;
-      el.replaceWith(document.createTextNode(text));
+    const risk = info.score > 0.78 ? 'high' : info.score > 0.65 ? 'medium' : 'low';
+    span.dataset.riskLevel = risk;
+
+    const blur = document.createElement('span');
+    blur.className = 'spoiler-shield-blur';
+    blur.textContent = sentence;
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'spoiler-shield-tooltip';
+    tooltip.textContent =
+      `Possible ${info.series} spoiler\nAI confidence: ${(info.score * 100).toFixed(0)}%`;
+
+    span.appendChild(blur);
+    span.appendChild(tooltip);
+
+    // Hover reveal
+    span.addEventListener('mouseenter', () => {
+      blur.classList.add('spoiler-shield-revealed');
+    });
+    span.addEventListener('mouseleave', () => {
+      blur.classList.remove('spoiler-shield-revealed');
     });
 
-    blurredElements = [];
-    console.log('SCube: ✅ Blurs removed');
+    blurredElements.add(span);
+    return span;
   }
 
-  // === MESSAGE LISTENER ===
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    console.log('SCube: 📨 Message received:', msg.action);
+  function replaceTextNodeWithSpoiler(node, sentence, info) {
+    const parent = node.parentElement;
+    if (!parent) return;
 
-    if (msg.action === 'refreshBlur') {
-      movieList = msg.movieList || [];
-      blurEnabled = msg.blurEnabled;
+    const fullText = node.textContent;
+    const index = fullText.indexOf(sentence);
+    if (index === -1) return;
 
-      console.log('SCube: 🔄 Refreshing with:', {
-        movies: movieList,
-        blur: blurEnabled
-      });
+    const before = document.createTextNode(fullText.substring(0, index));
+    const after = document.createTextNode(fullText.substring(index + sentence.length));
 
-      removeBlurs();
+    const spoilerSpan = createSpoilerSpan(sentence, info);
 
-      if (blurEnabled && movieList.length > 0) {
-        init();
+    parent.insertBefore(before, node);
+    parent.insertBefore(spoilerSpan, node);
+    parent.insertBefore(after, node);
+    parent.removeChild(node);
+  }
+
+  async function processElement(root) {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    const selector = 'p, div, li, article, section, [class*="comment"], [data-testid="tweet"], ytd-comment-renderer';
+    const elements = root.querySelectorAll(selector);
+
+    for (const el of elements) {
+      if (el.closest('.spoiler-shield-overlay')) continue;
+
+      const text = el.textContent.trim();
+      if (text.length < 100 || !mentionsAnySeries(text)) continue;
+
+      const sentences = splitIntoSentences(text);
+      if (sentences.length === 0) continue;
+
+      // Process in batches
+      for (let i = 0; i < sentences.length; i += BATCH_SIZE) {
+        const batch = sentences.slice(i, i + BATCH_SIZE);
+        const results = await classifyBatch(batch);
+
+        for (let j = 0; j < results.length; j++) {
+          const detection = results[j];
+          if (detection) {
+            console.log(`SCube AI: SPOILER → ${detection.series} (${(detection.score*100).toFixed(0)}%) → "${detection.sentence.substring(0,60)}..."`);
+            // Find the original text node and replace
+            // (simplified – in production you may want TreeWalker per element)
+            replaceTextNodeWithSpoiler(el.firstChild, detection.sentence, detection);
+          }
+        }
       }
-
-      sendResponse({ success: true });
     }
 
+    isProcessing = false;
+  }
+
+  // ────────────────────────────────────────────────
+  //  OBSERVER + INITIAL SCAN
+  // ────────────────────────────────────────────────
+  function startWatching() {
+    const observer = new MutationObserver(mutations => {
+      for (const mut of mutations) {
+        if (mut.type === 'childList') {
+          mut.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              processElement(node);
+            }
+          });
+        }
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // First pass
+    processElement(document.body);
+  }
+
+  // ────────────────────────────────────────────────
+  //  MESSAGES FROM POPUP
+  // ────────────────────────────────────────────────
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.action === 'settingsUpdated') {
+      enabled = msg.enabled;
+      sensitivity = msg.sensitivity;
+      trackedSeries = msg.trackedSeries || [];
+
+      if (!enabled) {
+        // optionally unblur everything
+        console.log('SCube AI: protection disabled');
+      } else if (trackedSeries.length > 0 && !classifier) {
+        loadModelAndSettings().then(ok => {
+          if (ok) startWatching();
+        });
+      } else {
+        console.log('SCube AI: settings refreshed');
+      }
+      sendResponse({ ok: true });
+    }
     return true;
   });
 
-  // === STYLES ===
-  const style = document.createElement('style');
-  style.textContent = `
-    .scube-blur {
-      filter: blur(6px);
-      background: rgba(0, 0, 0, 0.15);
-      padding: 3px 6px;
-      border-radius: 4px;
-      cursor: help;
-      transition: all 0.3s ease;
-      display: inline;
-      user-select: none;
-    }
-    
-    .scube-blur:hover {
-      filter: blur(0);
-      background: rgba(0, 212, 255, 0.2);
-    }
-  `;
-  document.head.appendChild(style);
-
-  // === START ===
+  // ────────────────────────────────────────────────
+  //  START
+  // ────────────────────────────────────────────────
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', async () => {
+      const ready = await loadModelAndSettings();
+      if (ready) startWatching();
+    });
   } else {
-    init();
+    loadModelAndSettings().then(ready => {
+      if (ready) startWatching();
+    });
   }
 
-  console.log('=== SCube Content Script Loaded ===');
-
+  console.log('SCube AI: content script loaded');
 })();

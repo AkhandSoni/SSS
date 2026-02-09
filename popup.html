@@ -5,397 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Semantic Spoiler Shield</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin:0; padding:0; box-sizing:border-box; }
 
     body {
       width: 400px;
-      min-height: 500px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      min-height: 520px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: #1f2937;
     }
 
-    .container {
-      background: white;
-      min-height: 500px;
-    }
+    .container { background: white; min-height: 520px; }
 
-    /* Header */
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 20px;
       text-align: center;
     }
+    .header h1 { font-size: 21px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .header p  { font-size: 12px; opacity: 0.92; }
 
-    .header h1 {
-      font-size: 20px;
-      margin-bottom: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .header p {
-      font-size: 12px;
-      opacity: 0.9;
-    }
-
-    /* Main controls */
-    .controls {
-      padding: 20px;
-      border-bottom: 2px solid #e5e7eb;
-    }
+    .controls { padding: 20px; border-bottom: 2px solid #e5e7eb; }
 
     .control-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
 
-    .control-label {
-      font-weight: 600;
-      font-size: 14px;
-    }
+    .control-label     { font-weight: 600; font-size: 14px; }
+    .control-description { font-size: 11.5px; color: #6b7280; margin-top: 3px; }
 
-    .control-description {
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 2px;
+    /* Status line */
+    #status-row { margin-bottom: 20px; }
+    #statusText {
+      font-weight: 500;
+      transition: color 0.3s;
     }
+    #statusText.syncing { color: #667eea; font-style: italic; }
+    #statusText.ready   { color: #10b981; }
+    #statusText.paused  { color: #ef4444; }
 
-    /* Toggle switch */
-    .toggle {
-      position: relative;
-      width: 50px;
-      height: 26px;
-    }
-
-    .toggle input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
+    /* Toggle */
+    .toggle { position:relative; width:54px; height:28px; }
+    .toggle input { opacity:0; width:0; height:0; }
     .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #cbd5e1;
-      transition: 0.3s;
-      border-radius: 26px;
+      position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+      background:#cbd5e1; transition:.4s; border-radius:28px;
     }
-
     .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: 0.3s;
-      border-radius: 50%;
+      position:absolute; content:""; height:20px; width:20px; left:4px; bottom:4px;
+      background:white; transition:.4s; border-radius:50%;
     }
+    input:checked + .slider     { background:#667eea; }
+    input:checked + .slider:before { transform: translateX(26px); }
 
-    input:checked + .slider {
-      background-color: #667eea;
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-
-    /* Blackout mode button */
+    /* Blackout button */
     .blackout-btn {
-      width: 100%;
-      padding: 15px;
+      width:100%; padding:14px; margin-top:12px;
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      transition: transform 0.2s;
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      color:white; border:none; border-radius:8px;
+      font-weight:700; font-size:14px; cursor:pointer;
+      transition: all 0.25s;
+      display:flex; align-items:center; justify-content:center; gap:8px;
     }
-
-    .blackout-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
-    }
-
+    .blackout-btn:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(245,87,108,0.35); }
     .blackout-btn.active {
-      background: #dc2626;
+      background:#dc2626;
       animation: pulse 2s infinite;
     }
 
-    /* Sensitivity slider */
-    .sensitivity-slider {
-      margin-top: 10px;
-    }
-
+    /* Sensitivity */
+    .sensitivity-slider { margin:12px 0 20px; }
     .sensitivity-slider input {
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: #e5e7eb;
-      outline: none;
-      -webkit-appearance: none;
+      width:100%; height:7px; border-radius:4px; background:#e5e7eb;
+      outline:none; -webkit-appearance:none;
     }
-
     .sensitivity-slider input::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #667eea;
-      cursor: pointer;
+      -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+      background:#667eea; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15);
     }
-
     .sensitivity-value {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #6b7280;
-      margin-top: 5px;
+      display:flex; justify-content:space-between; font-size:11px;
+      color:#6b7280; margin-top:6px;
     }
 
-    /* Lore Vault Section */
-    .lore-vault {
-      padding: 20px;
-    }
+    /* Lore Vault */
+    .lore-vault { padding:20px; }
+    .section-title { font-size:17px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
 
-    .section-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .series-list {
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
+    .series-list { max-height:220px; overflow-y:auto; }
     .series-item {
-      background: #f3f4f6;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      border-left: 4px solid #667eea;
+      background:#f3f4f6; padding:12px; border-radius:8px; margin-bottom:10px;
+      border-left:4px solid #667eea;
     }
-
-    .series-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .series-name {
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    .series-progress {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 8px;
-    }
-
-    .progress-input {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      font-size: 12px;
-    }
-
-    .progress-input input {
-      width: 60px;
-      padding: 4px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-
+    .series-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .series-name   { font-weight:600; font-size:13.5px; }
     .delete-btn {
-      background: #ef4444;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 11px;
+      background:#ef4444; color:white; border:none; padding:5px 10px;
+      border-radius:5px; cursor:pointer; font-size:11px;
     }
-
-    .delete-btn:hover {
-      background: #dc2626;
-    }
+    .delete-btn:hover { background:#dc2626; }
 
     .add-series-btn {
-      width: 100%;
-      padding: 10px;
-      background: white;
-      border: 2px dashed #667eea;
-      color: #667eea;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 13px;
+      width:100%; padding:11px; margin-top:12px;
+      background:white; border:2px dashed #667eea; color:#667eea;
+      border-radius:8px; font-weight:600; cursor:pointer; font-size:13.5px;
     }
+    .add-series-btn:hover { background:#f8fafc; }
 
-    .add-series-btn:hover {
-      background: #f3f4f6;
-    }
+    .add-series-form { display:none; background:#f9fafb; padding:16px; border-radius:8px; margin-top:12px; }
+    .add-series-form.active { display:block; }
 
-    .add-series-form {
-      display: none;
-      background: #f9fafb;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
-    .add-series-form.active {
-      display: block;
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 5px;
-    }
-
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:12.5px; font-weight:600; margin-bottom:6px; }
     .form-group input {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      font-size: 13px;
+      width:100%; padding:9px; border:1px solid #d1d5db; border-radius:6px;
+      font-size:13.5px;
     }
 
-    .form-actions {
-      display: flex;
-      gap: 8px;
-    }
-
+    .form-actions { display:flex; gap:10px; }
     .form-actions button {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 4px;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 12px;
+      flex:1; padding:10px; border:none; border-radius:6px;
+      font-weight:600; cursor:pointer; font-size:13px;
     }
+    .save-btn   { background:#667eea; color:white; }
+    .cancel-btn { background:#e5e7eb; color:#1f2937; }
 
-    .save-btn {
-      background: #667eea;
-      color: white;
-    }
+    .empty-state { text-align:center; padding:40px 20px; color:#9ca3af; font-size:13.5px; }
 
-    .cancel-btn {
-      background: #e5e7eb;
-      color: #1f2937;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 30px;
-      color: #9ca3af;
-      font-size: 13px;
-    }
-
-    /* Stats section */
-    .stats {
-      padding: 20px;
-      background: #f9fafb;
-      border-top: 2px solid #e5e7eb;
-    }
-
-    .stat-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      font-size: 13px;
-    }
-
-    .stat-label {
-      color: #6b7280;
-    }
-
-    .stat-value {
-      font-weight: 700;
-      color: #667eea;
-    }
+    /* Stats */
+    .stats { padding:20px; background:#f9fafb; border-top:2px solid #e5e7eb; }
+    .stat-item { display:flex; justify-content:space-between; padding:9px 0; font-size:13.5px; }
+    .stat-label { color:#6b7280; }
+    .stat-value { font-weight:700; color:#667eea; }
 
     /* Footer */
     .footer {
-      padding: 15px 20px;
-      background: #f3f4f6;
-      text-align: center;
-      font-size: 11px;
-      color: #6b7280;
+      padding:16px 20px; background:#f3f4f6; text-align:center;
+      font-size:11.5px; color:#6b7280;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.8; }
-    }
+    @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:0.78} }
 
-    /* Scrollbar styling */
-    .series-list::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .series-list::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 3px;
-    }
-
-    .series-list::-webkit-scrollbar-thumb {
-      background: #667eea;
-      border-radius: 3px;
-    }
+    .series-list::-webkit-scrollbar { width:6px; }
+    .series-list::-webkit-scrollbar-track { background:#f1f1f1; border-radius:3px; }
+    .series-list::-webkit-scrollbar-thumb { background:#667eea; border-radius:3px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
     <div class="header">
       <h1>🛡️ Semantic Spoiler Shield</h1>
-      <p>AI-Powered Spoiler Protection</p>
+      <p>Zero-Shot AI Spoiler Protection</p>
     </div>
 
-    <!-- Main Controls -->
     <div class="controls">
+      <div class="control-item" id="status-row">
+        <div>
+          <div class="control-label">Status</div>
+          <div id="statusText" class="control-description">Initializing…</div>
+        </div>
+      </div>
+
       <div class="control-item">
         <div>
           <div class="control-label">Enable Protection</div>
-          <div class="control-description">Activate spoiler detection</div>
+          <div class="control-description">Turn AI detection on/off</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="enableToggle" checked>
@@ -406,33 +184,30 @@
       <div class="control-item">
         <div>
           <div class="control-label">Sensitivity</div>
-          <div class="control-description">Higher = more aggressive blocking</div>
+          <div class="control-description">Higher = more sentences blurred</div>
         </div>
       </div>
       <div class="sensitivity-slider">
-        <input type="range" id="sensitivitySlider" min="0" max="100" value="40">
+        <input type="range" id="sensitivitySlider" min="0" max="100" value="50">
         <div class="sensitivity-value">
           <span>Lenient</span>
-          <span id="sensitivityPercent">40%</span>
+          <span id="sensitivityPercent">50%</span>
           <span>Strict</span>
         </div>
       </div>
 
-      <button class="blackout-btn" id="blackoutBtn">
-        ⚫ BLACKOUT MODE
-      </button>
+      <button class="blackout-btn" id="blackoutBtn">⚫ BLACKOUT MODE</button>
     </div>
 
-    <!-- Lore Vault -->
     <div class="lore-vault">
       <div class="section-title">📚 Lore Vault</div>
       <div id="seriesList" class="series-list"></div>
       <button class="add-series-btn" id="addSeriesBtn">+ Add Series</button>
-      
+
       <div class="add-series-form" id="addSeriesForm">
         <div class="form-group">
-          <label>Series Name</label>
-          <input type="text" id="seriesName" placeholder="e.g., Percy Jackson">
+          <label>Series / Fandom Name</label>
+          <input type="text" id="seriesName" placeholder="e.g. Attack on Titan, Game of Thrones">
         </div>
         <div class="form-actions">
           <button class="save-btn" id="saveSeriesBtn">Save</button>
@@ -441,7 +216,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="stats">
       <div class="stat-item">
         <span class="stat-label">Spoilers Blocked Today</span>
@@ -453,9 +227,8 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <div class="footer">
-      Semantic Spoiler Shield v1.0 | Protecting your story experience
+      Semantic Spoiler Shield • v3.0 (Zero-Shot AI) • 2026
     </div>
   </div>
 
