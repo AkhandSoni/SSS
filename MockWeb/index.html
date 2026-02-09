@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spoiler Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    .movie-card {
+      width: 45%;
+      height: 360px;              /* SAME HEIGHT */
+      padding: 2%;
+      margin: 1%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .summary {
+      flex-grow: 1;               /* Takes remaining space */
+      overflow-y: auto;           /* SCROLLABLE CONTENT */
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .movie-card {
+        width: 100%;
+        height: 380px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#" id="homeBtn">Spoiler Web</a>
+
+    <form class="d-flex" role="search" id="searchForm">
+      <input id="searchInput" class="form-control me-2" type="search" placeholder="Search movie or series">
+      <button class="btn btn-outline-success" type="submit">Search</button>
+    </form>
+  </div>
+</nav>
+
+<!-- Content -->
+<div class="container py-4">
+  <div id="moviesContainer" class="d-flex flex-wrap justify-content-center">
+    <!-- Cards injected here -->
+  </div>
+</div>
+
+<footer class="text-center text-body-secondary border-top py-3">
+  © DevSoc MockWeb
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
