@@ -110,20 +110,6 @@ function renderSeriesList() {
         <div class="series-name">${escapeHtml(series.name)}</div>
         <button class="delete-btn" data-index="${index}">Delete</button>
       </div>
-      <div class="series-progress">
-        Current Progress: Episode/Chapter ${series.progress.currentEpisode || 1}
-      </div>
-      <div class="progress-input">
-        <label>Update to:</label>
-        <input 
-          type="number" 
-          class="progress-update" 
-          data-index="${index}" 
-          value="${series.progress.currentEpisode || 1}"
-          min="1"
-        >
-        <button class="save-btn" onclick="updateProgress(${index})">Save</button>
-      </div>
     </div>
   `).join('');
 
@@ -135,19 +121,6 @@ function renderSeriesList() {
     });
   });
 }
-
-// Update series progress
-window.updateProgress = async function(index) {
-  const input = document.querySelector(`.progress-update[data-index="${index}"]`);
-  const newProgress = parseInt(input.value);
-
-  if (newProgress && newProgress > 0) {
-    settings.trackedSeries[index].progress.currentEpisode = newProgress;
-    await saveSettings();
-    renderSeriesList();
-    showNotification('Progress updated!');
-  }
-};
 
 // Delete series
 async function deleteSeries(index) {
@@ -207,25 +180,15 @@ function attachEventListeners() {
   // Save series
   document.getElementById('saveSeriesBtn').addEventListener('click', async () => {
     const name = document.getElementById('seriesName').value.trim();
-    const keywordsInput = document.getElementById('seriesKeywords').value.trim();
-    const progress = parseInt(document.getElementById('currentProgress').value) || 1;
 
     if (!name) {
       alert('Please enter a series name');
       return;
     }
 
-    const keywords = keywordsInput 
-      ? keywordsInput.split(',').map(k => k.trim()).filter(k => k)
-      : [name];
-
     // Create new series
     const newSeries = {
       name,
-      keywords,
-      progress: {
-        currentEpisode: progress
-      },
       addedDate: new Date().toISOString()
     };
 
@@ -249,8 +212,6 @@ function attachEventListeners() {
 // Clear add series form
 function clearAddSeriesForm() {
   document.getElementById('seriesName').value = '';
-  document.getElementById('seriesKeywords').value = '';
-  document.getElementById('currentProgress').value = '';
 }
 
 // Show notification
