@@ -1,13 +1,13 @@
 /* ===========================
    SCube – Content Script
-   Google highlight safe
-   No-keyword spoiler detection
+   Google-safe spoiler blur
+   No keywords, no API
    =========================== */
 
 let movies = [];
 let scheduled = false;
 
-/* Elements we must never touch */
+/* Never touch these */
 const SKIP_TAGS = new Set([
   "SCRIPT",
   "STYLE",
@@ -19,18 +19,16 @@ const SKIP_TAGS = new Set([
 ]);
 
 /* ---------------------------
-   Load movie data
+   Load movies
 ---------------------------- */
 chrome.storage.local.get(["movies"], (res) => {
   movies = res.movies || [];
-  console.log('[SCube] Loaded', movies.length, 'movies:', movies.map(m => m.title));
   scheduleScan();
 });
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.movies) {
     movies = changes.movies.newValue || [];
-    console.log('[SCube] Movies updated:', movies.map(m => m.title));
     scheduleScan();
   }
 });
@@ -56,7 +54,7 @@ function scheduleScan() {
 }
 
 /* ---------------------------
-   Scan text nodes safely
+   Scan text nodes
 ---------------------------- */
 function scan(root) {
   if (!movies.length) return;
@@ -66,10 +64,10 @@ function scan(root) {
     NodeFilter.SHOW_TEXT,
     {
       acceptNode(node) {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (SKIP_TAGS.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
-        if (parent.closest(".scube-blur")) return NodeFilter.FILTER_REJECT;
+        const p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        if (SKIP_TAGS.has(p.tagName)) return NodeFilter.FILTER_REJECT;
+        if (p.closest(".scube-blur")) return NodeFilter.FILTER_REJECT;
         if (node.nodeValue.trim().length < 30) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       }
@@ -78,22 +76,23 @@ function scan(root) {
 
   let node;
   while ((node = walker.nextNode())) {
-    processNodeWithContext(node);
+    processNode(node);
   }
 }
 
 /* ---------------------------
-   Context-aware processing
+   Process node with proximity
 ---------------------------- */
-function processNodeWithContext(textNode) {
+function processNode(textNode) {
   const parent = textNode.parentElement;
   if (!parent) return;
 
   const sentenceObj = collectSentence(parent);
   if (!sentenceObj) return;
 
-  if (!isNearSelectedTitle(parent)) return;
-  if (!isNarrativeSentence(sentenceObj.text)) return;
+  if (!isSpoilerSentence(sentenceObj.text)) return;
+
+  if (!isNearMovieTitle(parent)) return;
 
   if (parent.querySelector(".scube-blur")) return;
 
@@ -125,13 +124,13 @@ function collectSentence(parent) {
 }
 
 /* ---------------------------
-   Proximity-based title match
+   Movie proximity check
 ---------------------------- */
-function isNearSelectedTitle(startEl) {
+function isNearMovieTitle(startEl) {
   const titles = movies.map(m => m.title.toLowerCase());
 
   let el = startEl;
-  let collected = "";
+  let scannedText = "";
   let steps = 0;
 
   while (el && steps < 12) {
@@ -144,28 +143,16 @@ function isNearSelectedTitle(startEl) {
     if (!el) break;
 
     if (el.innerText) {
-      collected += " " + el.innerText.toLowerCase();
-      if (titles.some(t => collected.includes(t))) {
+      scannedText += " " + el.innerText.toLowerCase();
+      if (titles.some(t => scannedText.includes(t))) {
         return true;
       }
     }
+
     steps++;
   }
+
   return false;
-}
-
-/* ---------------------------
-   Narrative detection (series-safe)
----------------------------- */
-function isNarrativeSentence(text) {
-  const hasLength = text.length >= 40;
-  const hasStructure = /[.!?]/.test(text);
-  const hasAction =
-    /\b(was|were|had|did|became|lost|killed|married|betrayed)\b/i.test(text) ||
-    /\b\w+ed\b/.test(text);
-
-  // Action is a signal, not a requirement
-  return hasLength && hasStructure;
 }
 
 /* ---------------------------
@@ -200,4 +187,14 @@ function applyBlur(parent, sentenceObj) {
 
   nodes.forEach(n => parent.removeChild(n));
   parent.appendChild(span);
+}
+
+/* ---------------------------
+   No-keyword spoiler logic
+---------------------------- */
+function isSpoilerSentence(text) {
+  return (
+    /\b(was|were|had|did)\b/i.test(text) ||
+    /\b\w+ed\b/.test(text)
+  );
 }
