@@ -1,40 +1,42 @@
-<!-- popup.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SCube – Semantic Spoiler Shield</title>
+  <title>SCube – Shield</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🎬 SCube</h1>
-      <p class="subtitle">Semantic Spoiler Shield</p>
+  <div class="app-container">
+    <header class="main-header">
+      <div class="logo-area">
+        <span class="logo-icon">🧊</span>
+        <div class="logo-text">
+          <h1>SCUBE</h1>
+          <span class="tagline">SEMANTIC SHIELD</span>
+        </div>
+      </div>
+      <button id="resetBtn" class="icon-btn" title="Reset All">🔄</button>
     </header>
 
-    <div class="add-section">
-      <input 
-        type="text" 
-        id="movieInput" 
-        placeholder="Enter movie or series name..."
-        autocomplete="off"
-      >
-      <button id="addBtn">Add Movie/Series</button>
-    </div>
+    <main class="content">
+      <section class="input-group">
+        <input type="text" id="movieInput" placeholder="Add Movie or Series..." autocomplete="off">
+        <button id="addBtn">PROTECT</button>
+      </section>
 
-    <div class="status" id="status"></div>
+      <div id="status" class="status-bar"></div>
 
-    <div class="controls">
-      <button id="resetBtn" class="reset-btn">🔄 Reset All</button>
-    </div>
-
-    <div class="movies-list" id="moviesList">
-      <!-- Movies will be dynamically added here -->
-    </div>
+      <section class="list-container">
+        <div class="list-header">
+          <span>ACTIVE PROTOCOLS</span>
+          <span id="movieCount" class="badge">0</span>
+        </div>
+        <div id="moviesList" class="scroll-area">
+          </div>
+      </section>
+    </main>
   </div>
-
   <script src="popup.js"></script>
 </body>
 </html>
