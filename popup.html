@@ -1,234 +1,37 @@
+<!-- popup.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Semantic Spoiler Shield</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-
-    body {
-      width: 400px;
-      min-height: 520px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: #1f2937;
-    }
-
-    .container { background: white; min-height: 520px; }
-
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    .header h1 { font-size: 21px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .header p  { font-size: 12px; opacity: 0.92; }
-
-    .controls { padding: 20px; border-bottom: 2px solid #e5e7eb; }
-
-    .control-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .control-label     { font-weight: 600; font-size: 14px; }
-    .control-description { font-size: 11.5px; color: #6b7280; margin-top: 3px; }
-
-    /* Status line */
-    #status-row { margin-bottom: 20px; }
-    #statusText {
-      font-weight: 500;
-      transition: color 0.3s;
-    }
-    #statusText.syncing { color: #667eea; font-style: italic; }
-    #statusText.ready   { color: #10b981; }
-    #statusText.paused  { color: #ef4444; }
-
-    /* Toggle */
-    .toggle { position:relative; width:54px; height:28px; }
-    .toggle input { opacity:0; width:0; height:0; }
-    .slider {
-      position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
-      background:#cbd5e1; transition:.4s; border-radius:28px;
-    }
-    .slider:before {
-      position:absolute; content:""; height:20px; width:20px; left:4px; bottom:4px;
-      background:white; transition:.4s; border-radius:50%;
-    }
-    input:checked + .slider     { background:#667eea; }
-    input:checked + .slider:before { transform: translateX(26px); }
-
-    /* Blackout button */
-    .blackout-btn {
-      width:100%; padding:14px; margin-top:12px;
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color:white; border:none; border-radius:8px;
-      font-weight:700; font-size:14px; cursor:pointer;
-      transition: all 0.25s;
-      display:flex; align-items:center; justify-content:center; gap:8px;
-    }
-    .blackout-btn:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(245,87,108,0.35); }
-    .blackout-btn.active {
-      background:#dc2626;
-      animation: pulse 2s infinite;
-    }
-
-    /* Sensitivity */
-    .sensitivity-slider { margin:12px 0 20px; }
-    .sensitivity-slider input {
-      width:100%; height:7px; border-radius:4px; background:#e5e7eb;
-      outline:none; -webkit-appearance:none;
-    }
-    .sensitivity-slider input::-webkit-slider-thumb {
-      -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
-      background:#667eea; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15);
-    }
-    .sensitivity-value {
-      display:flex; justify-content:space-between; font-size:11px;
-      color:#6b7280; margin-top:6px;
-    }
-
-    /* Lore Vault */
-    .lore-vault { padding:20px; }
-    .section-title { font-size:17px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
-
-    .series-list { max-height:220px; overflow-y:auto; }
-    .series-item {
-      background:#f3f4f6; padding:12px; border-radius:8px; margin-bottom:10px;
-      border-left:4px solid #667eea;
-    }
-    .series-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-    .series-name   { font-weight:600; font-size:13.5px; }
-    .delete-btn {
-      background:#ef4444; color:white; border:none; padding:5px 10px;
-      border-radius:5px; cursor:pointer; font-size:11px;
-    }
-    .delete-btn:hover { background:#dc2626; }
-
-    .add-series-btn {
-      width:100%; padding:11px; margin-top:12px;
-      background:white; border:2px dashed #667eea; color:#667eea;
-      border-radius:8px; font-weight:600; cursor:pointer; font-size:13.5px;
-    }
-    .add-series-btn:hover { background:#f8fafc; }
-
-    .add-series-form { display:none; background:#f9fafb; padding:16px; border-radius:8px; margin-top:12px; }
-    .add-series-form.active { display:block; }
-
-    .form-group { margin-bottom:14px; }
-    .form-group label { display:block; font-size:12.5px; font-weight:600; margin-bottom:6px; }
-    .form-group input {
-      width:100%; padding:9px; border:1px solid #d1d5db; border-radius:6px;
-      font-size:13.5px;
-    }
-
-    .form-actions { display:flex; gap:10px; }
-    .form-actions button {
-      flex:1; padding:10px; border:none; border-radius:6px;
-      font-weight:600; cursor:pointer; font-size:13px;
-    }
-    .save-btn   { background:#667eea; color:white; }
-    .cancel-btn { background:#e5e7eb; color:#1f2937; }
-
-    .empty-state { text-align:center; padding:40px 20px; color:#9ca3af; font-size:13.5px; }
-
-    /* Stats */
-    .stats { padding:20px; background:#f9fafb; border-top:2px solid #e5e7eb; }
-    .stat-item { display:flex; justify-content:space-between; padding:9px 0; font-size:13.5px; }
-    .stat-label { color:#6b7280; }
-    .stat-value { font-weight:700; color:#667eea; }
-
-    /* Footer */
-    .footer {
-      padding:16px 20px; background:#f3f4f6; text-align:center;
-      font-size:11.5px; color:#6b7280;
-    }
-
-    @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:0.78} }
-
-    .series-list::-webkit-scrollbar { width:6px; }
-    .series-list::-webkit-scrollbar-track { background:#f1f1f1; border-radius:3px; }
-    .series-list::-webkit-scrollbar-thumb { background:#667eea; border-radius:3px; }
-  </style>
+  <title>SCube – Semantic Spoiler Shield</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>🛡️ Semantic Spoiler Shield</h1>
-      <p>Zero-Shot AI Spoiler Protection</p>
+    <header>
+      <h1>🎬 SCube</h1>
+      <p class="subtitle">Semantic Spoiler Shield</p>
+    </header>
+
+    <div class="add-section">
+      <input 
+        type="text" 
+        id="movieInput" 
+        placeholder="Enter movie or series name..."
+        autocomplete="off"
+      >
+      <button id="addBtn">Add Movie/Series</button>
     </div>
+
+    <div class="status" id="status"></div>
 
     <div class="controls">
-      <div class="control-item" id="status-row">
-        <div>
-          <div class="control-label">Status</div>
-          <div id="statusText" class="control-description">Initializing…</div>
-        </div>
-      </div>
-
-      <div class="control-item">
-        <div>
-          <div class="control-label">Enable Protection</div>
-          <div class="control-description">Turn AI detection on/off</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="enableToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <div class="control-item">
-        <div>
-          <div class="control-label">Sensitivity</div>
-          <div class="control-description">Higher = more sentences blurred</div>
-        </div>
-      </div>
-      <div class="sensitivity-slider">
-        <input type="range" id="sensitivitySlider" min="0" max="100" value="50">
-        <div class="sensitivity-value">
-          <span>Lenient</span>
-          <span id="sensitivityPercent">50%</span>
-          <span>Strict</span>
-        </div>
-      </div>
-
-      <button class="blackout-btn" id="blackoutBtn">⚫ BLACKOUT MODE</button>
+      <button id="resetBtn" class="reset-btn">🔄 Reset All</button>
     </div>
 
-    <div class="lore-vault">
-      <div class="section-title">📚 Lore Vault</div>
-      <div id="seriesList" class="series-list"></div>
-      <button class="add-series-btn" id="addSeriesBtn">+ Add Series</button>
-
-      <div class="add-series-form" id="addSeriesForm">
-        <div class="form-group">
-          <label>Series / Fandom Name</label>
-          <input type="text" id="seriesName" placeholder="e.g. Attack on Titan, Game of Thrones">
-        </div>
-        <div class="form-actions">
-          <button class="save-btn" id="saveSeriesBtn">Save</button>
-          <button class="cancel-btn" id="cancelSeriesBtn">Cancel</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="stats">
-      <div class="stat-item">
-        <span class="stat-label">Spoilers Blocked Today</span>
-        <span class="stat-value" id="blockedCount">0</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Protected Series</span>
-        <span class="stat-value" id="seriesCount">0</span>
-      </div>
-    </div>
-
-    <div class="footer">
-      Semantic Spoiler Shield • v3.0 (Zero-Shot AI) • 2026
+    <div class="movies-list" id="moviesList">
+      <!-- Movies will be dynamically added here -->
     </div>
   </div>
 

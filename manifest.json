@@ -1,28 +1,22 @@
 {
   "manifest_version": 3,
   "name": "SCube",
-  "description": "Blurs spoiler sentences across the web using AI semantic detection. Hover to reveal.",
-  "version": "3.0.0",
+  "description": "Semantic Spoiler Shield – aggressively blurs spoilers across the web.",
+  "version": "1.1.10",
   "icons": {
     "128": "icon128.png"
   },
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "SCube"
+    "default_popup": "popup.html"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["transformers.min.js", "content.js"],
-      "run_at": "document_end"
+      "js": ["content.js"],
+      "css": ["blur.css"],
+      "run_at": "document_idle"
     }
   ]
 }

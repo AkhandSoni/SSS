@@ -1,197 +1,101 @@
-// popup.js – Semantic Spoiler Shield (zero-shot AI version)
+const API_KEY = "243a9812";
 
-const SETTINGS = {
-  enabled:        'sss_enabled',
-  blackoutMode:   'sss_blackout',
-  trackedSeries:  'sss_tracked_series',
-  sensitivity:    'sss_sensitivity',
-  stats:          'sss_stats'
-};
+const input = document.getElementById("movieInput");
+const addBtn = document.getElementById("addBtn");
+const list = document.getElementById("moviesList");
+const status = document.getElementById("status");
+const resetBtn = document.getElementById("resetBtn");
 
-let state = {
-  enabled: true,
-  blackoutMode: false,
-  trackedSeries: [],
-  sensitivity: 0.5,
-  stats: { blockedToday: 0, lastReset: new Date().toDateString() }
-};
+let movies = [];
 
-const statusEl = () => document.getElementById('statusText');
+chrome.storage.local.get(["movies"], (res) => {
+  movies = res.movies || [];
+  render();
+});
 
-// ─── Broadcast current settings to active tab ────────────────────────────────
-async function pushSettingsToContentScript() {
-  statusEl().textContent = 'Syncing…';
-  statusEl().className = 'control-description syncing';
+addBtn.onclick = async () => {
+  const name = input.value.trim();
+  if (!name) return;
+
+  status.textContent = "Fetching from OMDb...";
+  status.className = "status loading";
 
   try {
-    const [tab] = await chrome.tabs.query({active:true, currentWindow:true});
-    if (!tab?.id) throw new Error('no active tab');
+    const res = await fetch(
+      `https://www.omdbapi.com/?apikey=${API_KEY}&t=${encodeURIComponent(name)}&plot=full`
+    );
+    const data = await res.json();
 
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'settingsUpdated',
-      enabled: state.enabled,
-      sensitivity: state.sensitivity,
-      trackedSeries: state.trackedSeries
-    }, () => {
-      if (chrome.runtime.lastError) {
-        statusEl().textContent = 'Waiting for page…';
-      } else {
-        statusEl().textContent = state.enabled ? 'Active ✓' : 'Paused';
-        statusEl().className = 'control-description ' + (state.enabled ? 'ready' : 'paused');
-      }
+    if (data.Response === "False") throw new Error("Not found");
+
+    const keywords = extractKeywords(data);
+
+    movies.push({
+      id: Date.now(),
+      title: data.Title,
+      year: data.Year,
+      keywords
     });
-  } catch (err) {
-    console.warn('Cannot sync settings right now', err);
-    statusEl().textContent = 'Sync error';
+
+    chrome.storage.local.set({ movies });
+    input.value = "";
+    status.textContent = "Added & blurring spoilers 🧊";
+    status.className = "status success";
+    render();
+  } catch {
+    status.textContent = "Movie not found";
+    status.className = "status error";
   }
+};
+
+resetBtn.onclick = () => {
+  movies = [];
+  chrome.storage.local.clear();
+  render();
+};
+
+function extractKeywords(data) {
+  const text = `
+    ${data.Title}
+    ${data.Plot}
+    ${data.Actors}
+    ${data.Genre}
+    ${data.Director}
+  `.toLowerCase();
+
+  return [...new Set(text.split(/[^a-z0-9]+/).filter(w => w.length > 3))];
 }
 
-// ─── Load from chrome.storage.sync ───────────────────────────────────────────
-async function load() {
-  const data = await new Promise(r => chrome.storage.sync.get(Object.values(SETTINGS), r));
-
-  state.enabled        = data[SETTINGS.enabled]        !== false;
-  state.blackoutMode   = !!data[SETTINGS.blackoutMode];
-  state.trackedSeries  = data[SETTINGS.trackedSeries]  || [];
-  state.sensitivity    = Number(data[SETTINGS.sensitivity]) || 0.5;
-  state.stats          = data[SETTINGS.stats] || { blockedToday:0, lastReset:new Date().toDateString() };
-
-  const today = new Date().toDateString();
-  if (state.stats.lastReset !== today) {
-    state.stats.blockedToday = 0;
-    state.stats.lastReset = today;
-    chrome.storage.sync.set({ [SETTINGS.stats]: state.stats });
-  }
-}
-
-// ─── Save + push to content script ───────────────────────────────────────────
-async function save() {
-  await chrome.storage.sync.set({
-    [SETTINGS.enabled]:       state.enabled,
-    [SETTINGS.blackoutMode]:  state.blackoutMode,
-    [SETTINGS.trackedSeries]: state.trackedSeries,
-    [SETTINGS.sensitivity]:   state.sensitivity,
-    [SETTINGS.stats]:         state.stats
-  });
-  await pushSettingsToContentScript();
-}
-
-// ─── UI rendering ─────────────────────────────────────────────────────────────
 function render() {
-  document.getElementById('enableToggle').checked = state.enabled;
+  list.innerHTML = "";
 
-  const pct = Math.round(state.sensitivity * 100);
-  document.getElementById('sensitivitySlider').value = pct;
-  document.getElementById('sensitivityPercent').textContent = pct + '%';
-
-  const btn = document.getElementById('blackoutBtn');
-  btn.classList.toggle('active', state.blackoutMode);
-  btn.textContent = state.blackoutMode ? '⚫ BLACKOUT ACTIVE' : '⚫ BLACKOUT MODE';
-
-  renderSeriesList();
-
-  document.getElementById('blockedCount').textContent = state.stats.blockedToday;
-  document.getElementById('seriesCount').textContent  = state.trackedSeries.length;
-
-  statusEl().textContent = state.enabled ? 'Active' : 'Paused';
-  statusEl().className = 'control-description ' + (state.enabled ? 'ready' : 'paused');
-}
-
-function renderSeriesList() {
-  const container = document.getElementById('seriesList');
-
-  if (state.trackedSeries.length === 0) {
-    container.innerHTML = `<div class="empty-state">No series protected yet<br>Add one to start AI shielding</div>`;
+  if (!movies.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🎥</div>
+        <div class="empty-state-text">No movies added</div>
+      </div>
+    `;
     return;
   }
 
-  container.innerHTML = state.trackedSeries.map((s, i) => `
-    <div class="series-item">
-      <div class="series-header">
-        <div class="series-name">${escapeHtml(s.name)}</div>
-        <button class="delete-btn" data-idx="${i}">Delete</button>
+  movies.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "movie-item";
+    div.innerHTML = `
+      <div class="movie-info">
+        <div class="movie-title">${m.title}</div>
+        <div class="movie-year">${m.year}</div>
       </div>
-    </div>
-  `).join('');
+      <button class="remove-btn">×</button>
+    `;
 
-  document.querySelectorAll('.delete-btn').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = Number(el.dataset.idx);
-      if (confirm('Remove this series?')) {
-        state.trackedSeries.splice(idx, 1);
-        save().then(render);
-      }
-    });
+    div.querySelector("button").onclick = () => {
+      movies = movies.filter(x => x.id !== m.id);
+      chrome.storage.local.set({ movies });
+      render();
+    };
+
+    list.appendChild(div);
   });
-}
-
-// ─── Event listeners ──────────────────────────────────────────────────────────
-function bindEvents() {
-  document.getElementById('enableToggle').onchange = e => {
-    state.enabled = e.target.checked;
-    save();
-  };
-
-  document.getElementById('sensitivitySlider').oninput = e => {
-    const v = e.target.value;
-    document.getElementById('sensitivityPercent').textContent = v + '%';
-    state.sensitivity = v / 100;
-  };
-  document.getElementById('sensitivitySlider').onchange = save;
-
-  document.getElementById('blackoutBtn').onclick = () => {
-    state.blackoutMode = !state.blackoutMode;
-    save();
-    render();
-  };
-
-  document.getElementById('addSeriesBtn').onclick = () => {
-    document.getElementById('addSeriesForm').classList.add('active');
-    document.getElementById('seriesName').focus();
-  };
-
-  document.getElementById('cancelSeriesBtn').onclick = () => {
-    document.getElementById('addSeriesForm').classList.remove('active');
-    document.getElementById('seriesName').value = '';
-  };
-
-  document.getElementById('saveSeriesBtn').onclick = async () => {
-    const name = document.getElementById('seriesName').value.trim();
-    if (!name) return alert('Please enter a name');
-
-    state.trackedSeries.push({
-      name,
-      added: new Date().toISOString()
-    });
-
-    await save();
-    document.getElementById('addSeriesForm').classList.remove('active');
-    document.getElementById('seriesName').value = '';
-    render();
-  };
-
-  // Stats increment from content script
-  chrome.runtime.onMessage.addListener(msg => {
-    if (msg?.type === 'spoilerBlocked') {
-      state.stats.blockedToday++;
-      save().then(() => {
-        document.getElementById('blockedCount').textContent = state.stats.blockedToday;
-      });
-    }
-  });
-}
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  await load();
-  render();
-  bindEvents();
-  await pushSettingsToContentScript();  // initial sync
-});
-
-// Minimal XSS escape
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
