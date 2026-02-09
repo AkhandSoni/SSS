@@ -4,7 +4,7 @@
    No-keyword spoiler detection
    =========================== */
 
-let spoilerWords = [];
+let movies = [];  // Store full movie list with titles
 let scheduled = false;
 
 /* Elements we must never touch */
@@ -22,20 +22,18 @@ const SKIP_TAGS = new Set([
    Load movie data
 ---------------------------- */
 chrome.storage.local.get(["movies"], (res) => {
-  spoilerWords = collectWords(res.movies || []);
+  movies = res.movies || [];
+  console.log('[SCube] Loaded', movies.length, 'movies:', movies.map(m => m.title));
   scheduleScan();
 });
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.movies) {
-    spoilerWords = collectWords(changes.movies.newValue || []);
+    movies = changes.movies.newValue || [];
+    console.log('[SCube] Movies updated:', movies.map(m => m.title));
     scheduleScan();
   }
 });
-
-function collectWords(movies) {
-  return movies.flatMap(m => m.keywords || []);
-}
 
 /* ---------------------------
    Observe DOM (throttled)
@@ -61,7 +59,7 @@ function scheduleScan() {
    Scan text nodes safely
 ---------------------------- */
 function scan(root) {
-  if (!spoilerWords.length) return;
+  if (!movies.length) return;
 
   const walker = document.createTreeWalker(
     root,
@@ -164,18 +162,15 @@ function processNodeWithContext(textNode) {
 function isSpoilerSentence(text) {
   const lower = text.toLowerCase();
 
-  // 1️⃣ Must reference movie-specific info
-  const movieMatch = spoilerWords.some(w => lower.includes(w));
-  if (!movieMatch) return false;
+  // 1️⃣ MUST explicitly mention the movie title (exact match, case-insensitive)
+  const mentionedMovies = movies.filter(m => lower.includes(m.title.toLowerCase()));
+  if (mentionedMovies.length === 0) return false;
 
-  // 2️⃣ Must be a proper sentence
-  if (text.length < 40) return false;
-  if (!/[.!?]/.test(text)) return false;
+  // 2️⃣ Multiple indicators needed to reduce false positives:
+  const hasPastTense = /\b(was|were|had|did)\b/i.test(text) || /\b\w+ed\b/.test(text);
+  const hasSpoilerLanguage = /\b(ending|twist|reveal|death|secret|betrayal|spoiler|discovered)\b/i.test(text);
+  const isLongEnough = text.length >= 50 && /[.!?]/.test(text);
 
-  // 3️⃣ Grammar-based outcome signal (no keywords)
-  const pastEventSignal =
-    /\b(was|were|had|did)\b/i.test(text) ||
-    /\b\w+ed\b/.test(text);
-
-  return pastEventSignal;
+  // 3️⃣ Must have: (past tense OR spoiler language) AND be long/proper sentence
+  return (hasPastTense || hasSpoilerLanguage) && isLongEnough;
 }

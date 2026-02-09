@@ -55,15 +55,22 @@ resetBtn.onclick = () => {
 };
 
 function extractKeywords(data) {
-  const text = `
-    ${data.Title}
-    ${data.Plot}
-    ${data.Actors}
-    ${data.Genre}
-    ${data.Director}
-  `.toLowerCase();
+  // Simplified: we only use movie title in content.js now, but keep keywords for future use
+  const title = (data.Title || "").toLowerCase();
+  const plot = (data.Plot || "").toLowerCase();
+  
+  const stopwords = new Set([
+    "the", "and", "or", "for", "with", "from", "that", "this", "is", "are",
+    "was", "were", "have", "has", "on", "in", "at", "to", "be", "by"
+  ]);
 
-  return [...new Set(text.split(/[^a-z0-9]+/).filter(w => w.length > 3))];
+  // Extract 5+ char words from plot, exclude stopwords
+  const keywords = new Set();
+  plot.split(/[^a-z0-9]+/)
+    .filter(w => w.length >= 5 && !stopwords.has(w))
+    .forEach(w => keywords.add(w));
+
+  return Array.from(keywords);
 }
 
 function render() {
