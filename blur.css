@@ -13,18 +13,18 @@
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
   
-  /* 3. VERTICAL SPACING (Prevent overlap) */
-  line-height: 1.6 !important; 
-  padding: 1px 6px !important;
+  /* 3. VERTICAL SPACING (No overlap, room for bigger penguins) */
+  line-height: 2.2 !important; 
+  padding: 4px 6px !important;
   margin: 2px 2px !important;
   vertical-align: baseline !important;
 
   /* 4. BACKGROUND COLOR */
   background-color: rgba(255, 255, 255, 0.12) !important; 
   
-  /* 5. PENGUIN ANIMATION - Sized for inline flow */
+  /* 5. PENGUIN ANIMATION - Bigger penguin! */
   background-repeat: no-repeat !important; 
-  background-size: auto 20px !important;    
+  background-size: auto 28px !important;    
   background-attachment: scroll !important;
   
   border-radius: 8px !important;
@@ -50,6 +50,9 @@
   cursor: pointer !important;
   user-select: none !important;
   position: relative !important;
+  
+  /* Ensure entire area is clickable */
+  pointer-events: all !important;
   
   /* Smooth transitions */
   transition: 

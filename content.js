@@ -201,8 +201,15 @@ function applyBlur(parent, sentenceObj) {
 
   // CLICK TO REVEAL: Captures the click on the entire inline-block area
   span.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
     revealSpoiler(span);
+  });
+  
+  // POINTER DOWN for better touch/click capture
+  span.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   });
 
   // KEYBOARD SUPPORT: Space or Enter to reveal
