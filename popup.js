@@ -12,7 +12,7 @@ chrome.storage.local.get(["movies"], (res) => {
   render();
 });
 
-addBtn.onclick = async () => {
+async function addMovie() {
   const name = input.value.trim();
   if (!name) return;
 
@@ -43,7 +43,15 @@ addBtn.onclick = async () => {
   } finally {
     addBtn.disabled = false;
   }
-};
+}
+
+addBtn.onclick = addMovie;
+
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    addMovie();
+  }
+});
 
 document.getElementById("resetBtn").onclick = () => {
   if(confirm("Purge all protection protocols?")) {
