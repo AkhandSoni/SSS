@@ -10,7 +10,7 @@
     }
   ],
   "icons": {
-    "128": "icon128.png"
+    "128": "Logo.png"
   },
   "permissions": ["storage", "scripting"],
   "host_permissions": ["<all_urls>"],
