@@ -8,34 +8,19 @@
 </head>
 <body>
   <div class="app-container">
-    <header class="main-header">
-      <div class="logo-area">
-        <span class="logo-icon">🧊</span>
-        <div class="logo-text">
-          <h1>SCUBE</h1>
-          <span class="tagline">SEMANTIC SHIELD</span>
-        </div>
-      </div>
-      <button id="resetBtn" class="icon-btn" title="Reset All">🔄</button>
-    </header>
+    <div class="header">
+      <div class="logo-icon">S</div>
+      <h2>SCube Spoilers</h2>
+    </div>
+    
+    <div class="input-group">
+      <input type="text" id="movieInput" placeholder="Enter movie to block..." autofocus>
+      <button id="addBtn">Shield This Movie</button>
+    </div>
 
-    <main class="content">
-      <section class="input-group">
-        <input type="text" id="movieInput" placeholder="Add Movie or Series..." autocomplete="off">
-        <button id="addBtn">PROTECT</button>
-      </section>
-
-      <div id="status" class="status-bar"></div>
-
-      <section class="list-container">
-        <div class="list-header">
-          <span>ACTIVE PROTOCOLS</span>
-          <span id="movieCount" class="badge">0</span>
-        </div>
-        <div id="moviesList" class="scroll-area">
-          </div>
-      </section>
-    </main>
+    <div class="movie-list-container">
+      <div id="movieList"></div>
+    </div>
   </div>
   <script src="popup.js"></script>
 </body>

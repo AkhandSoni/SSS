@@ -154,9 +154,8 @@ function isNearMovieTitle(startEl) {
 
   return false;
 }
-
 /* ---------------------------
-   Apply blur
+   Apply blur (Total Hit-box Fix)
 ---------------------------- */
 function applyBlur(parent, sentenceObj) {
   const { text, nodes } = sentenceObj;
@@ -165,30 +164,24 @@ function applyBlur(parent, sentenceObj) {
   span.className = "scube-blur";
   span.textContent = text;
 
-  let hover = false;
-  let click = false;
+  // Ensure the penguin URL is passed to the CSS
+  const penguinUrl = chrome.runtime.getURL("Penguin_gif.gif");
+  span.style.setProperty('--penguin-url', `url(${penguinUrl})`);
 
-  span.addEventListener("mouseenter", () => hover = true);
+  // CLICK TO REVEAL: Captures the click on the entire inline-block area
+  span.addEventListener("click", (e) => {
+    e.stopPropagation(); // Stop click from triggering other things
+    span.classList.add("reveal");
+  });
+
+  // HIDE ON LEAVE: Resets the penguin immediately
   span.addEventListener("mouseleave", () => {
-    hover = false;
-    click = false;
     span.classList.remove("reveal");
-  });
-
-  span.addEventListener("mousedown", () => {
-    click = true;
-    if (hover) span.classList.add("reveal");
-  });
-
-  span.addEventListener("mouseup", () => {
-    click = false;
-    if (!hover) span.classList.remove("reveal");
   });
 
   nodes.forEach(n => parent.removeChild(n));
   parent.appendChild(span);
 }
-
 /* ---------------------------
    No-keyword spoiler logic
 ---------------------------- */

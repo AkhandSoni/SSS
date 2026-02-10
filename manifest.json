@@ -5,7 +5,7 @@
   "version": "1.1.10",
   "web_accessible_resources": [
     {
-      "resources": ["Long_Bush.png"],
+      "resources": ["Penguin_gif.gif"],
       "matches": ["<all_urls>"]
     }
   ],
