@@ -5,8 +5,10 @@ const list = document.getElementById("moviesList");
 const status = document.getElementById("status");
 const countBadge = document.getElementById("movieCount");
 const toggleAllBtn = document.getElementById("toggleAllBtn");
+const suggestionsBox = document.getElementById("suggestions");
 
 let movies = [];
+let searchTimeout;
 
 chrome.storage.local.get(["movies"], (res) => {
   movies = res.movies || [];
@@ -22,9 +24,77 @@ function refreshCurrentTab() {
   });
 }
 
+// Autocomplete search
+input.addEventListener("input", (e) => {
+  const query = e.target.value.trim();
+  
+  clearTimeout(searchTimeout);
+  
+  if (query.length < 2) {
+    suggestionsBox.innerHTML = "";
+    suggestionsBox.style.display = "none";
+    return;
+  }
+  
+  searchTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://www.omdbapi.com/?apikey=${API_KEY}&s=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      
+      if (data.Response === "True" && data.Search) {
+        showSuggestions(data.Search.slice(0, 5)); // Show top 5 results
+      } else {
+        suggestionsBox.innerHTML = "";
+        suggestionsBox.style.display = "none";
+      }
+    } catch (error) {
+      suggestionsBox.innerHTML = "";
+      suggestionsBox.style.display = "none";
+    }
+  }, 300); // Debounce 300ms
+});
+
+function showSuggestions(results) {
+  suggestionsBox.innerHTML = "";
+  
+  results.forEach(movie => {
+    const item = document.createElement("div");
+    item.className = "suggestion-item";
+    item.innerHTML = `
+      <div class="sug-content">
+        <span class="sug-title">${movie.Title}</span>
+        <span class="sug-year">${movie.Year}</span>
+      </div>
+    `;
+    
+    item.onclick = () => {
+      input.value = movie.Title;
+      suggestionsBox.innerHTML = "";
+      suggestionsBox.style.display = "none";
+      addMovie();
+    };
+    
+    suggestionsBox.appendChild(item);
+  });
+  
+  suggestionsBox.style.display = "block";
+}
+
+// Close suggestions when clicking outside
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".input-group")) {
+    suggestionsBox.innerHTML = "";
+    suggestionsBox.style.display = "none";
+  }
+});
+
 async function addMovie() {
   const name = input.value.trim();
   if (!name) return;
+
+  // Hide suggestions
+  suggestionsBox.innerHTML = "";
+  suggestionsBox.style.display = "none";
 
   addBtn.disabled = true;
   status.textContent = "SYNCHRONIZING WITH DATABASE...";
@@ -84,10 +154,8 @@ document.getElementById("resetBtn").onclick = () => {
 toggleAllBtn.onclick = () => {
   if (!movies.length) return;
   
-  // Check if all are enabled
   const allEnabled = movies.every(m => m.enabled !== false);
   
-  // Toggle all to opposite state
   movies.forEach(m => {
     m.enabled = !allEnabled;
   });
@@ -115,7 +183,6 @@ function render() {
   list.innerHTML = "";
   countBadge.textContent = movies.length;
   
-  // Update toggle all button state
   if (movies.length > 0) {
     const allEnabled = movies.every(m => m.enabled !== false);
     toggleAllBtn.classList.toggle('all-active', allEnabled);

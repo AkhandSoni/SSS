@@ -24,7 +24,10 @@
 
     <main class="content">
       <section class="input-group">
-        <input type="text" id="movieInput" placeholder="Add Movie or Series..." autocomplete="off">
+        <div style="position: relative; flex: 1;">
+          <input type="text" id="movieInput" placeholder="Add Movie or Series..." autocomplete="off">
+          <div id="suggestions" class="suggestions-dropdown"></div>
+        </div>
         <button id="addBtn">PROTECT</button>
       </section>
 
