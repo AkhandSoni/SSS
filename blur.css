@@ -1,5 +1,6 @@
 /* =========================================
-   SCUBE: MARCHING PENGUIN (FORCED MOVEMENT)
+   S³: ENHANCED MARCHING PENGUIN
+   Smoother, playful, and performant
    ========================================= */
 
 .scube-blur {
@@ -12,58 +13,162 @@
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
   
-  /* 3. VERTICAL SPACING (Keeps lanes clear) */
-  line-height: 2.5em !important; 
-  padding: 12px 0 !important;
-  margin: 0 2px !important;
+  /* 3. VERTICAL SPACING (Prevent overlap) */
+  line-height: 1.6 !important; 
+  padding: 1px 6px !important;
+  margin: 2px 2px !important;
+  vertical-align: baseline !important;
 
-  /* 4. THE PENGUIN GIF (Filepath) */
-  /* Note: Ensure Penguin_gif.gif is in your root folder */
-  background-image: url('chrome-extension://__MSG_@@extension_id__/Penguin_gif.gif') !important;
+  /* 4. BACKGROUND COLOR */
+  background-color: rgba(255, 255, 255, 0.12) !important; 
   
-  /* 5. WALKING DYNAMICS */
+  /* 5. PENGUIN ANIMATION - Sized for inline flow */
   background-repeat: no-repeat !important; 
-  background-size: contain !important;    
+  background-size: auto 20px !important;    
   background-attachment: scroll !important;
   
-  /* Background color gives the penguin a snowy "path" */
-  background-color: #f0faff !important; 
-  border-radius: 6px;
+  border-radius: 8px !important;
+  
+  /* Frosted glass blur effect */
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  
+  /* Subtle border for definition */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  
+  /* Subtle shadow for depth */
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
 
-  /* 6. THE WALK ANIMATION */
-  /* Using 'forwards' and 'infinite' to ensure it keeps moving */
-  animation: penguin-marching 6s linear infinite !important;
-
-  /* 7. INTERACTION */
+  /* 6. SMOOTH ANIMATION */
+  animation: 
+    penguin-marching 8s linear infinite,
+    fade-in 0.3s ease !important;
+  
+  /* 7. PLAYFUL INTERACTION */
   cursor: pointer !important;
-  user-select: none;
-  position: relative;
-  transition: filter 0.3s;
+  user-select: none !important;
+  position: relative !important;
+  
+  /* Smooth transitions */
+  transition: 
+    filter 0.3s ease,
+    transform 0.2s ease,
+    box-shadow 0.3s ease !important;
+  
+  /* Subtle hint it's interactive */
+  will-change: transform !important;
 }
 
-/* 8. FORCED MOVEMENT LOGIC */
-/* We animate 'background-position-x' which often works better for inline spans */
+/* 8. HOVER STATE - Penguin notices you! */
+.scube-blur:hover {
+  transform: translateY(-2px) !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  
+  /* Slight slow-down on hover */
+  animation-play-state: running !important;
+  filter: brightness(1.05) !important;
+}
+
+/* 9. SMOOTH WALKING ANIMATION */
 @keyframes penguin-marching {
-  0% { 
-    background-position-x: -50px; 
-    background-position-y: center;
+  from { 
+    background-position: -30px center; 
   }
-  100% { 
-    background-position-x: calc(100% + 50px); 
-    background-position-y: center;
+  to { 
+    background-position: calc(100% + 30px) center; 
   }
 }
 
-/* 9. THE REVEAL FIX */
+/* 8. HOVER STATE - Penguin notices you! */
+.scube-blur:active {
+  transform: scale(0.98) !important;
+}
+
+/* 12. THE REVEAL STATE */
 .scube-blur.reveal {
   color: inherit !important;
   text-shadow: none !important;
   background: none !important;
   background-image: none !important;
-  animation: none !important;
-  padding: 0 !important;
+  background-color: transparent !important;
+  animation: reveal-bounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+  padding: 0 4px !important;
   margin: 0 !important;
-  line-height: normal !important; /* */
+  line-height: normal !important;
   cursor: text !important;
   display: inline !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  
+  /* Subtle highlight after reveal */
+  background-color: rgba(255, 235, 59, 0.15) !important;
+  transition: background-color 0.8s ease !important;
 }
+
+/* 13. REVEAL ANIMATION - Playful bounce */
+@keyframes reveal-bounce {
+  0% {
+    transform: scale(1);
+    filter: blur(3px);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: blur(1px);
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* 14. FADE OUT THE HIGHLIGHT */
+.scube-blur.reveal {
+  animation: 
+    reveal-bounce 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+    fade-highlight 1.5s ease 0.5s forwards !important;
+}
+
+@keyframes fade-highlight {
+  to {
+    background-color: transparent !important;
+  }
+}
+
+/* 15. ACCESSIBILITY - Focus state for keyboard users */
+.scube-blur:focus {
+  outline: 2px solid rgba(33, 150, 243, 0.5) !important;
+  outline-offset: 2px !important;
+}
+
+/* 16. LOADING STATE - Fade in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 17. REDUCED MOTION SUPPORT - For accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .scube-blur {
+    animation: none !important;
+    background-position: center !important;
+  }
+  
+  .scube-blur.reveal {
+    animation: none !important;
+    transition: background-color 0.3s ease !important;
+  }
+}
+
+/* 18. REDUCED MOTION SUPPORT - For accessibility */

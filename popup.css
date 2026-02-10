@@ -101,6 +101,12 @@ body {
   letter-spacing: -0.5px;
 }
 
+.logo-text h1 sup {
+  font-size: 12px;
+  font-weight: 700;
+  top: -0.5em;
+}
+
 .tagline {
   display: block;
   font-size: 11px;

@@ -1,5 +1,5 @@
 /* ===========================
-   SCube – Content Script
+   S³ – Content Script
    Google-safe spoiler blur
    No keywords, no API
    =========================== */
@@ -180,8 +180,9 @@ function isNearMovieTitle(startEl) {
 
   return false;
 }
+
 /* ---------------------------
-   Apply blur (Total Hit-box Fix)
+   Apply blur (Enhanced with accessibility)
 ---------------------------- */
 function applyBlur(parent, sentenceObj) {
   const { text, nodes } = sentenceObj;
@@ -189,25 +190,52 @@ function applyBlur(parent, sentenceObj) {
   const span = document.createElement("span");
   span.className = "scube-blur";
   span.textContent = text;
+  span.setAttribute('role', 'button');
+  span.setAttribute('aria-label', 'Spoiler content - click to reveal');
+  span.setAttribute('tabindex', '0');
 
-  // Ensure the penguin URL is passed to the CSS
+  // Set the penguin background directly
   const penguinUrl = chrome.runtime.getURL("Penguin_gif.gif");
-  span.style.setProperty('--penguin-url', `url(${penguinUrl})`);
+  span.style.backgroundImage = `url("${penguinUrl}")`;
+  span.style.backgroundPosition = '-30px center';
 
   // CLICK TO REVEAL: Captures the click on the entire inline-block area
   span.addEventListener("click", (e) => {
-    e.stopPropagation(); // Stop click from triggering other things
-    span.classList.add("reveal");
+    e.stopPropagation();
+    revealSpoiler(span);
+  });
+
+  // KEYBOARD SUPPORT: Space or Enter to reveal
+  span.addEventListener("keydown", (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      revealSpoiler(span);
+    }
   });
 
   // HIDE ON LEAVE: Resets the penguin immediately
   span.addEventListener("mouseleave", () => {
-    span.classList.remove("reveal");
+    hideSpoiler(span);
   });
 
   nodes.forEach(n => parent.removeChild(n));
   parent.appendChild(span);
 }
+
+/* ---------------------------
+   Reveal/Hide helper functions
+---------------------------- */
+function revealSpoiler(span) {
+  span.classList.add("reveal");
+  span.setAttribute('aria-label', 'Spoiler revealed');
+}
+
+function hideSpoiler(span) {
+  span.classList.remove("reveal");
+  span.setAttribute('aria-label', 'Spoiler content - click to reveal');
+}
+
 /* ---------------------------
    No-keyword spoiler logic
 ---------------------------- */

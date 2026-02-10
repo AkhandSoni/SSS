@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "SCube",
+  "name": "S³",
   "description": "Semantic Spoiler Shield – aggressively blurs spoilers across the web.",
   "version": "1.1.10",
   "web_accessible_resources": [
