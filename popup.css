@@ -34,6 +34,11 @@ body {
 .logo-text h1 { font-size: 20px; letter-spacing: 2px; color: #fff; }
 .tagline { font-size: 9px; color: var(--primary); font-weight: 800; letter-spacing: 1px; }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .content { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
 
 .input-group { display: flex; gap: 8px; }
@@ -175,4 +180,27 @@ body {
 
 .icon-btn:active {
   transform: rotate(180deg) scale(0.95);
+}
+
+.toggle-all {
+  border-color: #666;
+}
+
+.toggle-all:hover {
+  border-color: var(--primary);
+  background: rgba(0, 242, 255, 0.1);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
+}
+
+.toggle-all.all-active {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.toggle-all.all-active:hover {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.2);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
 }

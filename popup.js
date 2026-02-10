@@ -4,6 +4,7 @@ const addBtn = document.getElementById("addBtn");
 const list = document.getElementById("moviesList");
 const status = document.getElementById("status");
 const countBadge = document.getElementById("movieCount");
+const toggleAllBtn = document.getElementById("toggleAllBtn");
 
 let movies = [];
 
@@ -34,7 +35,7 @@ async function addMovie() {
         id: Date.now(), 
         title: data.Title, 
         year: data.Year,
-        enabled: true  // Default to enabled
+        enabled: true
       });
       chrome.storage.local.set({ movies });
       input.value = "";
@@ -65,6 +66,24 @@ document.getElementById("resetBtn").onclick = () => {
   }
 };
 
+toggleAllBtn.onclick = () => {
+  if (!movies.length) return;
+  
+  // Check if all are enabled
+  const allEnabled = movies.every(m => m.enabled !== false);
+  
+  // Toggle all to opposite state
+  movies.forEach(m => {
+    m.enabled = !allEnabled;
+  });
+  
+  chrome.storage.local.set({ movies }, () => {
+    render();
+    status.textContent = allEnabled ? "ALL SHIELDS DEACTIVATED" : "ALL SHIELDS ACTIVATED";
+    status.className = allEnabled ? "status-bar error" : "status-bar success";
+  });
+};
+
 function toggleMovie(id) {
   const movie = movies.find(m => m.id === id);
   if (movie) {
@@ -76,6 +95,14 @@ function toggleMovie(id) {
 function render() {
   list.innerHTML = "";
   countBadge.textContent = movies.length;
+  
+  // Update toggle all button state
+  if (movies.length > 0) {
+    const allEnabled = movies.every(m => m.enabled !== false);
+    toggleAllBtn.classList.toggle('all-active', allEnabled);
+  } else {
+    toggleAllBtn.classList.remove('all-active');
+  }
 
   if (!movies.length) {
     list.innerHTML = `<div style="text-align:center; padding:40px; color:#444; font-size:12px;">NO ACTIVE SHIELDS</div>`;
@@ -83,7 +110,6 @@ function render() {
   }
 
   movies.forEach(m => {
-    // Ensure backward compatibility - if enabled doesn't exist, default to true
     if (m.enabled === undefined) m.enabled = true;
     
     const card = document.createElement("div");
