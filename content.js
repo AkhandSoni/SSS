@@ -28,10 +28,34 @@ chrome.storage.local.get(["movies"], (res) => {
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.movies) {
+    const oldMovies = movies;
     movies = changes.movies.newValue || [];
+    
+    // Check which movies were disabled
+    const disabledTitles = [];
+    oldMovies.forEach(oldMovie => {
+      const newMovie = movies.find(m => m.id === oldMovie.id);
+      if (newMovie && oldMovie.enabled && !newMovie.enabled) {
+        disabledTitles.push(oldMovie.title);
+      }
+    });
+    
+    if (disabledTitles.length > 0) {
+      removeBlursForMovies(disabledTitles);
+    }
+    
     scheduleScan();
   }
 });
+
+/* ---------------------------
+   Remove blurs for specific movies
+---------------------------- */
+function removeBlursForMovies(titles) {
+  document.querySelectorAll('.scube-blur').forEach(blur => {
+    blur.replaceWith(document.createTextNode(blur.textContent));
+  });
+}
 
 /* ---------------------------
    Observe DOM (throttled)
@@ -57,7 +81,8 @@ function scheduleScan() {
    Scan text nodes
 ---------------------------- */
 function scan(root) {
-  if (!movies.length) return;
+  const enabledMovies = movies.filter(m => m.enabled !== false);
+  if (!enabledMovies.length) return;
 
   const walker = document.createTreeWalker(
     root,
@@ -127,7 +152,8 @@ function collectSentence(parent) {
    Movie proximity check
 ---------------------------- */
 function isNearMovieTitle(startEl) {
-  const titles = movies.map(m => m.title.toLowerCase());
+  const enabledMovies = movies.filter(m => m.enabled !== false);
+  const titles = enabledMovies.map(m => m.title.toLowerCase());
 
   let el = startEl;
   let scannedText = "";
