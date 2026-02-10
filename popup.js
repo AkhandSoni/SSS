@@ -13,6 +13,15 @@ chrome.storage.local.get(["movies"], (res) => {
   render();
 });
 
+// Helper function to refresh current tab
+function refreshCurrentTab() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      chrome.tabs.reload(tabs[0].id);
+    }
+  });
+}
+
 async function addMovie() {
   const name = input.value.trim();
   if (!name) return;
@@ -37,11 +46,13 @@ async function addMovie() {
         year: data.Year,
         enabled: true
       });
-      chrome.storage.local.set({ movies });
-      input.value = "";
-      status.textContent = "SHIELD ACTIVE FOR: " + data.Title.toUpperCase();
-      status.className = "status-bar success";
-      render();
+      chrome.storage.local.set({ movies }, () => {
+        input.value = "";
+        status.textContent = "SHIELD ACTIVE FOR: " + data.Title.toUpperCase();
+        status.className = "status-bar success";
+        render();
+        refreshCurrentTab();
+      });
     }
   } catch {
     status.textContent = "PROTOCOL FAILED: MOVIE NOT FOUND";
@@ -53,6 +64,7 @@ async function addMovie() {
 
 addBtn.onclick = addMovie;
 
+// This only triggers when Enter is pressed INSIDE the input field
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") {
     addMovie();
@@ -62,7 +74,10 @@ input.addEventListener("keypress", (e) => {
 document.getElementById("resetBtn").onclick = () => {
   if(confirm("Purge all protection protocols?")) {
     movies = [];
-    chrome.storage.local.set({ movies }, () => render());
+    chrome.storage.local.set({ movies }, () => {
+      render();
+      refreshCurrentTab();
+    });
   }
 };
 
@@ -81,6 +96,7 @@ toggleAllBtn.onclick = () => {
     render();
     status.textContent = allEnabled ? "ALL SHIELDS DEACTIVATED" : "ALL SHIELDS ACTIVATED";
     status.className = allEnabled ? "status-bar error" : "status-bar success";
+    refreshCurrentTab();
   });
 };
 
@@ -88,7 +104,10 @@ function toggleMovie(id) {
   const movie = movies.find(m => m.id === id);
   if (movie) {
     movie.enabled = !movie.enabled;
-    chrome.storage.local.set({ movies }, () => render());
+    chrome.storage.local.set({ movies }, () => {
+      render();
+      refreshCurrentTab();
+    });
   }
 }
 
@@ -131,7 +150,10 @@ function render() {
     
     card.querySelector(".del-btn").onclick = () => {
       movies = movies.filter(x => x.id !== m.id);
-      chrome.storage.local.set({ movies }, () => render());
+      chrome.storage.local.set({ movies }, () => {
+        render();
+        refreshCurrentTab();
+      });
     };
     
     list.appendChild(card);
