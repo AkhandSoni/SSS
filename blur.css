@@ -29,9 +29,9 @@
   
   border-radius: 8px !important;
   
-  /* Frosted glass blur effect */
+  /* Frosted glass blur effect
   backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important; */
   
   /* Subtle border for definition */
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
