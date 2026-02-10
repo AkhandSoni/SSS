@@ -99,6 +99,46 @@ body {
 .m-title { font-size: 14px; font-weight: 600; color: #fff; display: block; }
 .m-year { font-size: 11px; color: var(--text-dim); }
 
+.card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: 1px solid #333;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-btn.active {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.toggle-btn:hover {
+  transform: scale(1.05);
+}
+
+.toggle-btn.active:hover {
+  border-color: var(--success);
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+}
+
+.toggle-btn:not(.active):hover {
+  border-color: #666;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .del-btn {
   background: transparent;
   border: 1px solid #333;

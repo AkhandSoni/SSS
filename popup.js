@@ -30,7 +30,12 @@ async function addMovie() {
       status.textContent = "ALREADY PROTECTED";
       status.className = "status-bar error";
     } else {
-      movies.push({ id: Date.now(), title: data.Title, year: data.Year });
+      movies.push({ 
+        id: Date.now(), 
+        title: data.Title, 
+        year: data.Year,
+        enabled: true  // Default to enabled
+      });
       chrome.storage.local.set({ movies });
       input.value = "";
       status.textContent = "SHIELD ACTIVE FOR: " + data.Title.toUpperCase();
@@ -60,6 +65,14 @@ document.getElementById("resetBtn").onclick = () => {
   }
 };
 
+function toggleMovie(id) {
+  const movie = movies.find(m => m.id === id);
+  if (movie) {
+    movie.enabled = !movie.enabled;
+    chrome.storage.local.set({ movies }, () => render());
+  }
+}
+
 function render() {
   list.innerHTML = "";
   countBadge.textContent = movies.length;
@@ -70,6 +83,9 @@ function render() {
   }
 
   movies.forEach(m => {
+    // Ensure backward compatibility - if enabled doesn't exist, default to true
+    if (m.enabled === undefined) m.enabled = true;
+    
     const card = document.createElement("div");
     card.className = "movie-card";
     card.innerHTML = `
@@ -77,12 +93,21 @@ function render() {
         <span class="m-title">${m.title}</span>
         <span class="m-year">${m.year}</span>
       </div>
-      <button class="del-btn">✕</button>
+      <div class="card-actions">
+        <button class="toggle-btn ${m.enabled ? 'active' : ''}" title="${m.enabled ? 'Disable' : 'Enable'} Shield">
+          ${m.enabled ? '🛡️' : '⭕'}
+        </button>
+        <button class="del-btn">✕</button>
+      </div>
     `;
+    
+    card.querySelector(".toggle-btn").onclick = () => toggleMovie(m.id);
+    
     card.querySelector(".del-btn").onclick = () => {
       movies = movies.filter(x => x.id !== m.id);
       chrome.storage.local.set({ movies }, () => render());
     };
+    
     list.appendChild(card);
   });
 }
