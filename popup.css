@@ -114,5 +114,25 @@ body {
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.icon-btn { background: none; border: none; cursor: pointer; filter: grayscale(1); transition: 0.2s; }
-.icon-btn:hover { filter: grayscale(0); transform: rotate(90deg); }
+.icon-btn {
+  background: var(--bg-card);
+  border: 1px solid #333;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.icon-btn:hover {
+  border-color: var(--danger);
+  background: rgba(255, 75, 43, 0.1);
+  transform: rotate(180deg);
+  box-shadow: 0 0 12px rgba(255, 75, 43, 0.3);
+}
+
+.icon-btn:active {
+  transform: rotate(180deg) scale(0.95);
+}
